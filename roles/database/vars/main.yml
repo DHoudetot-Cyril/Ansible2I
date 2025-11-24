@@ -1,0 +1,6 @@
+---
+# Database server variables
+mariadb_root_password: "Centrale"
+mariadb_admin_user: "admin"
+mariadb_admin_password: "IG2IUser"
+mariadb_database: "Test1"

@@ -1,0 +1,125 @@
+# tasks file for roles/database - Debian 12
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+- name: Install Python3 pip and setuptools
+  apt:
+    name:
+      - python3-pip
+      - python3-setuptools
+    state: present
+
+
+# ----------------------------------
+# DOCKER SETUP
+# ----------------------------------
+
+- name: Install Docker
+  apt:
+    name: docker.io
+    state: present
+
+- name: Install Docker Python library (Debian package)
+  apt:
+    name: python3-docker
+    state: present
+
+- name: Start and enable Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+# ----------------------------------
+# CREATE DOCKER NETWORK
+# ----------------------------------
+
+- name: Create Docker network for MariaDB + phpMyAdmin
+  docker_network:
+    name: db_network
+    driver: bridge
+
+# ----------------------------------
+# MARIADB IN DOCKER (with vars)
+# ----------------------------------
+
+- name: Deploy MariaDB container
+  docker_container:
+    name: mariadb
+    image: mariadb:latest
+    state: started
+    restart_policy: always
+    env:
+      MYSQL_ROOT_PASSWORD: "{{ mariadb_root_password }}"
+      MYSQL_DATABASE: "{{ mariadb_database }}"
+      MYSQL_USER: "{{ mariadb_admin_user }}"
+      MYSQL_PASSWORD: "{{ mariadb_admin_password }}"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - name: db_network
+
+# ----------------------------------
+# WAIT FOR MARIADB
+# ----------------------------------
+
+- name: Wait for MariaDB to be ready
+  wait_for:
+    host: "127.0.0.1"
+    port: 3306
+    delay: 5
+    timeout: 40
+
+# ----------------------------------
+# PHPMYADMIN IN DOCKER (with vars)
+# ----------------------------------
+
+- name: Deploy phpMyAdmin container
+  docker_container:
+    name: phpmyadmin
+    image: phpmyadmin:latest
+    state: started
+    restart_policy: always
+    env:
+      PMA_HOST: mariadb
+      PMA_USER: "{{ mariadb_admin_user }}"
+      PMA_PASSWORD: "{{ mariadb_admin_password }}"
+    ports:
+      - "80:80"
+    networks:
+      - name: db_network
+
+# ----------------------------------
+# IMPORT SQL FILE
+# ----------------------------------
+
+- name: Copy SQL dump file to server
+  copy:
+    src: Test1.sql
+    dest: /tmp/Test1.sql
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Import SQL dump into database
+  shell: |
+    docker exec -i mariadb sh -c 'exec mariadb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < /tmp/Test1.sql
+  environment:
+    MYSQL_USER: "{{ mariadb_admin_user }}"
+    MYSQL_PASSWORD: "{{ mariadb_admin_password }}"
+    MYSQL_DATABASE: "{{ mariadb_database }}"
+  args:
+    executable: /bin/bash
+  ignore_errors: yes
+

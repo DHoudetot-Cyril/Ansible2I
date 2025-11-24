@@ -1,0 +1,88 @@
+---
+# tasks file for roles/webserver - Debian 12
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+- name: Install Apache2
+  apt:
+    name: apache2
+    state: present
+
+- name: Install PHP 8.4 and required modules
+  apt:
+    name:
+      - php8.4
+      - php8.4-mysql
+      - php8.4-common
+      - php8.4-cli
+      - php8.4-gd
+    state: present
+
+- name: Install command line web client (lynx)
+  apt:
+    name: lynx
+    state: present
+
+- name: Start and enable Apache2
+  service:
+    name: apache2
+    state: started
+    enabled: yes
+
+- name: Remove default index.html
+  file:
+    path: /var/www/html/index.html
+    state: absent
+
+- name: Create index.html with Hello World
+  copy:
+    content: "<h1> Hello World! </h1>\n"
+    dest: /var/www/html/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Create info.php
+  copy:
+    content: "<?php\nphpinfo();\n?>\n"
+    dest: /var/www/html/info.php
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Create dump.table.php template
+  template:
+    src: dump.table.php.j2
+    dest: /var/www/html/dump.table.php
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Set permissions on /var/www/html
+  file:
+    path: /var/www/html
+    state: directory
+    owner: www-data
+    group: admin
+    mode: '0775'
+
+- name: Ensure www-data is in admin group
+  user:
+    name: www-data
+    groups: admin
+    append: yes
+
+- name: Restart Apache2
+  service:
+    name: apache2
+    state: restarted
+  notify: restart apache

@@ -1,0 +1,4 @@
+---
+# These IPs should be set in your inventory or group_vars
+webserver_private_ip: "172.31.70.218"
+dbserver_private_ip: "172.31.76.10"

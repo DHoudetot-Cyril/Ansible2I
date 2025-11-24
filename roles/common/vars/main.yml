@@ -1,0 +1,4 @@
+---
+# vars file for role/webserver & role/database
+ansible_user: admin
+ansible_ssh_private_key_file: /home/admin/.ssh/vockey.pem

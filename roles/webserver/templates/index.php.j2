@@ -1,0 +1,25 @@
+<?php
+$servername = "{{ db_host }}";
+$username = "{{ db_user }}";
+$password = "{{ db_password }}";
+$dbname = "{{ db_name }}";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+if ($conn->connect_error) {
+    die("<h2>Connection failed: " . $conn->connect_error . "</h2>");
+}
+
+$sql = "SELECT message FROM messages ORDER BY id DESC LIMIT 1";
+$result = $conn->query($sql);
+
+if ($result && $result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    echo "<h1>" . htmlspecialchars($row['message']) . "</h1>";
+} else {
+    echo "<h1>No message found in database.</h1>";
+}
+
+$conn->close();
+?>
+<p>Served by host: {{ ansible_hostname }}</p>
+

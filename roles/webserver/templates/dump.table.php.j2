@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <?php
+ $host = "{{ database_private_ip }}";
+ $database = "Test1";
+ $user = "admin";
+ $pass = "IG2IUser";
+ $conn = new mysqli($host, $user, $pass, $database);
+ if ($conn->connect_errno) {
+ printf("Connection to database failed: %s<br>", $conn->connect_errno);
+ exit();
+ }
+ echo "Here is the list of Users from the Database $database<br>";
+ $sql = "SELECT LastName, FirstName\n"
+ . "FROM Users";
+ $result = $conn->query($sql);
+ if ($result->num_rows > 0) {
+ while ($row = $result->fetch_assoc()) {
+ print $row["FirstName"] . " " . $row["LastName"] . "<br>";
+ }
+ } else {
+ echo "No result found!<br>";
+ }
+ ?>
+</head>
+</html>

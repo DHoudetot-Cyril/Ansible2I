@@ -1,0 +1,7 @@
+# Database connection
+db_name: ig2i-test
+db_user: ig2i
+db_password: ig2i
+db_host: localhost
+
+

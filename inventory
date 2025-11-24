@@ -1,0 +1,11 @@
+[webservers]
+web01 ansible_host=172.31.70.218 ansible_user=admin ansible_ssh_private_key_file=~/.ssh/vockey.pem
+
+[databases]
+db01 ansible_host=172.31.76.10 ansible_user=admin ansible_ssh_private_key_file=~/.ssh/vockey.pem
+
+[bastion]
+bastion01 ansible_host=172.31.66.199 ansible_user=admin ansible_ssh_private_key_file=~/.ssh/vockey.pem
+
+[all:vars]
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'

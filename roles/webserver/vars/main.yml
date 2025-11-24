@@ -1,0 +1,6 @@
+---
+# Variables for webserver
+database_private_ip: "172.31.24.35"
+php_version: "8.4"
+apache_user: www-data
+apache_group: www-data

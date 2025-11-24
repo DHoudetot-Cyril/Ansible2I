@@ -1,0 +1,48 @@
+---
+# tasks file for roles/bastion - Debian 13
+
+- name: Update all packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+- name: Install nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Create nginx config directory
+  file:
+    path: /etc/nginx/conf.d
+    state: directory
+    mode: '0755'
+
+- name: Configure Nginx
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    mode: '0644'
+  notify: restart nginx
+
+- name: Ensure Nginx is started and enabled
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Ensure SELinux allows Nginx (ignore errors on Debian)
+  shell: |
+    semanage port -a -t http_port_t -p tcp 80 || true
+    setsebool -P httpd_can_network_connect 1
+  ignore_errors: yes
+
+- name: Configure AWS security group (if needed)
+  shell: |
+    aws ec2 authorize-security-group-ingress \
+    --group-name "IG2I-SG-1" \
+    --protocol tcp \
+    --port 80 \
+    --cidr 0.0.0.0/0
+  ignore_errors: yes

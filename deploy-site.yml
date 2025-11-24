@@ -1,0 +1,18 @@
+---
+- name: Configure Web Server
+  hosts: webservers
+  become: yes
+  roles:
+    - webserver
+
+- name: Configure Database Server
+  hosts: databases
+  become: yes
+  roles:
+    - database
+
+- name: Configure Bastion
+  hosts: bastion
+  become: yes
+  roles:
+    - bastion

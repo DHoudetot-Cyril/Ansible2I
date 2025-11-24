@@ -1,0 +1,11 @@
+---
+# Default webserver packages per OS family
+
+webserver_package: apache2
+php_packages:
+    - libapache2-mod-php8.2
+    - php8.2
+    - php8.2-cli
+    - php8.2-common
+    - php8.2-mysql
+

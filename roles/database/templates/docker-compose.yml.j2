@@ -1,0 +1,11 @@
+version: '3'
+services:
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=localhost
+      - PMA_PORT=3306
+      - MYSQL_ROOT_PASSWORD={{ mariadb_root_password }}
+    restart: always
