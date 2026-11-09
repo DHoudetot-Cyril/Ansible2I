@@ -1,0 +1,10 @@
+---
+# Variables partagées par tous les serveurs (web et base de données).
+# Les secrets ne sont jamais écrits ici : ils viennent de group_vars/all/vault.yml,
+# un fichier chiffré avec Ansible Vault et ignoré par Git (voir vault.yml.example).
+
+mariadb_database: "Test1"
+mariadb_admin_user: "admin"
+
+mariadb_root_password: "{{ vault_mariadb_root_password }}"
+mariadb_admin_password: "{{ vault_mariadb_admin_password }}"

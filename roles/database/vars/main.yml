@@ -1,6 +1,3 @@
 ---
-# Database server variables
-mariadb_root_password: "Centrale"
-mariadb_admin_user: "admin"
-mariadb_admin_password: "IG2IUser"
-mariadb_database: "Test1"
+# Les variables de la base (nom, utilisateur, mots de passe) sont partagées avec le
+# serveur web : elles sont définies dans group_vars/all/ (mots de passe chiffrés avec Ansible Vault).

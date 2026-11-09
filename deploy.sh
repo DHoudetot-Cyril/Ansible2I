@@ -62,12 +62,33 @@ else
     echo -e "${GREEN}✓ Bastion accessible${NC}"
 fi
 
-# Créer le répertoire group_vars
-mkdir -p group_vars/all
+# Vérification des secrets (Ansible Vault)
+VAULT_FILE=group_vars/all/vault.yml
+if [ ! -f "$VAULT_FILE" ]; then
+    echo -e "${RED}✗ Erreur: $VAULT_FILE introuvable${NC}"
+    echo "  Créez-le à partir du modèle, puis chiffrez-le :"
+    echo "    cp group_vars/all/vault.yml.example $VAULT_FILE"
+    echo "    # remplacez les mots de passe, puis :"
+    echo "    ansible-vault encrypt $VAULT_FILE"
+    exit 1
+fi
+if ! head -n1 "$VAULT_FILE" | grep -q '^\$ANSIBLE_VAULT'; then
+    echo -e "${RED}✗ Erreur: $VAULT_FILE n'est pas chiffré${NC}"
+    echo "  Lancez : ansible-vault encrypt $VAULT_FILE"
+    exit 1
+fi
+echo -e "${GREEN}✓ Secrets chiffrés trouvés${NC}"
+
+# Mot de passe du vault : fichier .vault_pass s'il existe, sinon demandé au clavier
+if [ -f .vault_pass ]; then
+    VAULT_OPTS=(--vault-password-file .vault_pass)
+else
+    VAULT_OPTS=(--ask-vault-pass)
+fi
 
 # Lancement du playbook
 echo -e "${YELLOW}⚙ Déploiement de l'infrastructure...${NC}"
-ansible-playbook -i inventory deploy-site.yml
+ansible-playbook -i inventory deploy-site.yml "${VAULT_OPTS[@]}"
 
 # Vérification finale
 if [ $? -eq 0 ]; then

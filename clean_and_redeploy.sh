@@ -21,12 +21,6 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
 fi
 
-# Nettoyer localement
-echo -e "${YELLOW}Nettoyage des fichiers locaux...${NC}"
-rm -rf group_vars
-rm -f .vault_pass
-echo -e "${GREEN}✓ Fichiers locaux nettoyés${NC}"
-
 # Réinitialiser les serveurs (optionnel)
 echo ""
 echo -e "${YELLOW}Réinitialisation des serveurs (optionnel)...${NC}"

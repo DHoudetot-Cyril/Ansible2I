@@ -1,0 +1,4 @@
+# Secrets Ansible : jamais dans Git
+group_vars/all/vault.yml
+.vault_pass
+*.retry

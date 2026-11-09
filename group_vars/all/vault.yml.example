@@ -1,0 +1,11 @@
+---
+# Modèle du fichier de secrets. Pour créer le vrai fichier, chiffré :
+#
+#   cp group_vars/all/vault.yml.example group_vars/all/vault.yml
+#   # remplacez les valeurs ci-dessous, puis :
+#   ansible-vault encrypt group_vars/all/vault.yml
+#
+# vault.yml est ignoré par Git : il ne doit jamais être publié.
+
+vault_mariadb_root_password: "A_REMPLACER"
+vault_mariadb_admin_password: "A_REMPLACER"

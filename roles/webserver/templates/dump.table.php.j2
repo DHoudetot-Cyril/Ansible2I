@@ -3,9 +3,9 @@
 <head>
  <?php
  $host = "{{ database_private_ip }}";
- $database = "Test1";
- $user = "admin";
- $pass = "IG2IUser";
+ $database = "{{ mariadb_database }}";
+ $user = "{{ mariadb_admin_user }}";
+ $pass = "{{ mariadb_admin_password }}";
  $conn = new mysqli($host, $user, $pass, $database);
  if ($conn->connect_errno) {
  printf("Connection to database failed: %s<br>", $conn->connect_errno);

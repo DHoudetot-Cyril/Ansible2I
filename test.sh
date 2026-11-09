@@ -13,8 +13,17 @@ echo -e "${YELLOW}║   Tests du déploiement IG2I - Web + Database             
 echo -e "${YELLOW}╚════════════════════════════════════════════════════════════╝${NC}"
 
 # Récupérer les IPs du inventaire
-WEBSERVER_IP=$(grep "webserver ansible_host" inventory | awk '{print $3}' | cut -d= -f2)
-DBSERVER_IP=$(grep "dbserver ansible_host" inventory | awk '{print $3}' | cut -d= -f2)
+# (première machine de chaque groupe)
+ip_of() { awk -v g="[$1]" '$0==g{f=1;next} /^\[/{f=0} f&&/ansible_host=/{for(i=1;i<=NF;i++) if($i~/^ansible_host=/){split($i,a,"=");print a[2];exit}}' inventory; }
+WEBSERVER_IP=$(ip_of webservers)
+DBSERVER_IP=$(ip_of databases)
+
+# Mot de passe du vault : fichier .vault_pass s'il existe, sinon demandé au clavier
+if [ -f .vault_pass ]; then
+    VAULT_OPTS=(--vault-password-file .vault_pass)
+else
+    VAULT_OPTS=(--ask-vault-pass)
+fi
 
 echo ""
 echo "Configuration détectée :"
@@ -35,7 +44,7 @@ fi
 echo ""
 echo -e "${YELLOW}Test 2: Connectivité Ansible${NC}"
 echo "  Web Server..."
-ansible webserver -i inventory -m ping > /dev/null 2>&1
+ansible webservers -i inventory -m ping > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}✓ Web Server accessible${NC}"
 else
@@ -43,7 +52,7 @@ else
 fi
 
 echo "  Database Server..."
-ansible database -i inventory -m ping > /dev/null 2>&1
+ansible databases -i inventory -m ping > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}✓ Database Server accessible${NC}"
 else
@@ -54,7 +63,7 @@ fi
 echo ""
 echo -e "${YELLOW}Test 3: Services Web Server${NC}"
 echo "  Apache2..."
-ansible webserver -i inventory -m shell -a "sudo systemctl is-active apache2" 2>/dev/null | grep -q "active"
+ansible webservers -i inventory -m shell -b -a "systemctl is-active apache2" 2>/dev/null | grep -qx "active"
 if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}✓ Apache2 est actif${NC}"
 else
@@ -62,7 +71,7 @@ else
 fi
 
 echo "  PHP..."
-ansible webserver -i inventory -m shell -a "php --version" 2>/dev/null | grep -q "PHP"
+ansible webservers -i inventory -m shell -a "php --version" 2>/dev/null | grep -q "PHP"
 if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}✓ PHP est installé${NC}"
 else
@@ -73,15 +82,15 @@ fi
 echo ""
 echo -e "${YELLOW}Test 4: Services Database Server${NC}"
 echo "  MariaDB..."
-ansible database -i inventory -m shell -a "sudo systemctl is-active mariadb" 2>/dev/null | grep -q "active"
+ansible databases -i inventory -b -m shell -a "docker ps --filter name=mariadb" 2>/dev/null | grep -q "mariadb"
 if [ $? -eq 0 ]; then
-    echo -e "  ${GREEN}✓ MariaDB est actif${NC}"
+    echo -e "  ${GREEN}✓ Conteneur MariaDB actif${NC}"
 else
     echo -e "  ${RED}✗ MariaDB n'est pas actif${NC}"
 fi
 
 echo "  Docker..."
-ansible database -i inventory -m shell -a "sudo systemctl is-active docker" 2>/dev/null | grep -q "active"
+ansible databases -i inventory -m shell -b -a "systemctl is-active docker" 2>/dev/null | grep -qx "active"
 if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}✓ Docker est actif${NC}"
 else
@@ -89,7 +98,7 @@ else
 fi
 
 echo "  phpMyAdmin..."
-ansible database -i inventory -m shell -a "sudo docker ps | grep myadmin" 2>/dev/null | grep -q "myadmin"
+ansible databases -i inventory -m shell -b -a "docker ps | grep myadmin" 2>/dev/null | grep -q "myadmin"
 if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}✓ phpMyAdmin container est actif${NC}"
 else
@@ -100,7 +109,7 @@ fi
 echo ""
 echo -e "${YELLOW}Test 5: Fichiers Web Server${NC}"
 for file in index.html info.php dump.table.php; do
-    ansible webserver -i inventory -m shell -a "test -f /var/www/html/$file && echo OK" 2>/dev/null | grep -q "OK"
+    ansible webservers -i inventory -m shell -a "test -f /var/www/html/$file && echo OK" 2>/dev/null | grep -q "OK"
     if [ $? -eq 0 ]; then
         echo -e "  ${GREEN}✓ $file existe${NC}"
     else
@@ -111,7 +120,7 @@ done
 # Test 6 : Vérifier la base de données
 echo ""
 echo -e "${YELLOW}Test 6: Base de données Test1${NC}"
-ansible database -i inventory -m shell -a "mysql -u admin -pIG2IUser -e 'USE Test1; SHOW TABLES;'" 2>/dev/null | grep -q "Users"
+ansible databases -i inventory -b "${VAULT_OPTS[@]}" -m shell -a "docker exec mariadb mariadb -u{{ mariadb_admin_user }} -p{{ mariadb_admin_password }} -e 'USE {{ mariadb_database }}; SHOW TABLES;'" 2>/dev/null | grep -q "Users"
 if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}✓ Base de données Test1 existe avec table Users${NC}"
 else
@@ -121,7 +130,7 @@ fi
 # Test 7 : Vérifier les données
 echo ""
 echo -e "${YELLOW}Test 7: Données dans Test1.Users${NC}"
-USER_COUNT=$(ansible database -i inventory -m shell -a "mysql -u admin -pIG2IUser -e 'SELECT COUNT(*) FROM Test1.Users;'" 2>/dev/null | grep -E "^[0-9]+" | head -1 | tr -d ' ')
+USER_COUNT=$(ansible databases -i inventory -b "${VAULT_OPTS[@]}" -m shell -a "docker exec mariadb mariadb -N -u{{ mariadb_admin_user }} -p{{ mariadb_admin_password }} -e 'SELECT COUNT(*) FROM {{ mariadb_database }}.Users;'" 2>/dev/null | grep -E "^[0-9]+$" | head -1 | tr -d ' ')
 if [ ! -z "$USER_COUNT" ] && [ "$USER_COUNT" -gt 0 ]; then
     echo -e "  ${GREEN}✓ Table Users contient $USER_COUNT enregistrements${NC}"
 else
@@ -136,5 +145,5 @@ echo ""
 echo "Prochaines étapes :"
 echo "  1. Accédez au Web Server : http://<WEBSERVER_PUBLIC_IP>/"
 echo "  2. Testez dump.table.php : http://<WEBSERVER_PUBLIC_IP>/dump.table.php"
-echo "  3. Accédez à phpMyAdmin : http://<DBSERVER_PUBLIC_IP>/"
-echo "     Identifiants: admin / IG2IUser"
+echo "  3. Accédez à phpMyAdmin : http://<BASTION_PUBLIC_IP>/pma/"
+echo "     Identifiants : ceux de group_vars/all/vault.yml (ansible-vault view group_vars/all/vault.yml)"
