@@ -1,117 +1,116 @@
-# 🚀 Projet IG2I - Architecture 3-Tiers Automatisée (Ansible)
+<h1 align="center">🛡️ Ansible2I</h1>
 
-Ce projet déploie une architecture web 3-tiers complète et automatisée sur AWS utilisant **Ansible**. Il met en œuvre des pratiques DevOps modernes pour orchestrer trois serveurs distincts assurant la sécurité, la distribution de charge et la persistance des données.
+<p align="center">
+  <strong>Déploiement automatisé d'une architecture web 3-tiers sur AWS avec Ansible :<br/>
+  un bastion Nginx, un serveur Apache/PHP et une base MariaDB, configurés en une seule commande.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Ansible-EE0000?logo=ansible&logoColor=white" alt="Ansible">
+  <img src="https://img.shields.io/badge/AWS-EC2-FF9900?logo=amazonwebservices&logoColor=white" alt="AWS EC2">
+  <img src="https://img.shields.io/badge/Debian-12-A81D33?logo=debian&logoColor=white" alt="Debian 12">
+  <img src="https://img.shields.io/badge/Nginx-009639?logo=nginx&logoColor=white" alt="Nginx">
+  <img src="https://img.shields.io/badge/Apache-D22128?logo=apache&logoColor=white" alt="Apache">
+  <img src="https://img.shields.io/badge/MariaDB-003545?logo=mariadb&logoColor=white" alt="MariaDB">
+  <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/projet-d'école-lightgrey" alt="Projet d'école">
+</p>
+
+---
+
+Trois machines Debian vierges sur AWS. Un `./deploy.sh` plus tard, on obtient un site PHP relié à sa base de
+données, derrière un reverse proxy qui est le **seul point d'entrée** depuis Internet.
 
 ## 🏗️ Architecture
 
-L'infrastructure est composée de trois instances Debian 12 interconnectées :
-
-1.  **🛡️ Bastion (Reverse Proxy)**
-    *   **Rôle** : Point d'entrée unique pour les utilisateurs.
-    *   **Service** : Nginx.
-    *   **Fonction** : Redirige le trafic HTTP vers le serveur Web ou l'interface d'administration de la base de données (phpMyAdmin).
-
-2.  **🌐 Web Server (Application)**
-    *   **Rôle** : Hébergement de l'application web.
-    *   **Services** : Apache2, PHP 8.4.
-    *   **Fonction** : Exécute le code PHP et communique avec le serveur de base de données.
-
-3.  **🗄️ Database Server (Données)**
-    *   **Rôle** : Stockage des données et administration.
-    *   **Services** : MariaDB, Docker (pour phpMyAdmin).
-    *   **Fonction** : Stocke les données utilisateurs et fournit une interface de gestion via phpMyAdmin.
-
----
-
-## 📋 Prérequis
-
-Avant de lancer le déploiement, assurez-vous de disposer des éléments suivants :
-
-*   **3 Instances AWS** (Debian 12, t3.micro recommandées) avec le Security Group `IG2I-SG-1`.
-*   **Clé SSH** : `vockey.pem` placée dans `~/.ssh/` avec les permissions strictes (`chmod 600`).
-*   **Ansible** installé sur votre machine de contrôle.
-*   **Configuration de l'inventaire** : Mettez à jour le fichier `inventory` avec les IPs publiques et privées de vos instances.
-
----
-
-## 🚀 Déploiement Rapide
-
-Le déploiement est entièrement scripté.
-
-1.  **Cloner et préparer** :
-    ```bash
-    cd roles_labs/advanced
-    chmod +x deploy.sh test.sh clean_and_redeploy.sh
-    ```
-
-2.  **Lancer le déploiement** :
-    ```bash
-    ./deploy.sh
-    ```
-    *Ce script vérifie les clés SSH, la connectivité Ansible, et lance le playbook principal.*
-
----
-
-## 🔗 Accès aux Services
-
-Une fois le déploiement terminé, tout est accessible via l'IP publique du **Bastion**.
-
-| Service                | URL                                  | Description                           |
-| ---------------------- | ------------------------------------ | ------------------------------------- |
-| **Site Web**           | `http://<BASTION_IP>/`               | Page d'accueil du site.               |
-| **Liste Utilisateurs** | `http://<BASTION_IP>/dump.table.php` | Test de connexion Web <-> DB.         |
-| **Info PHP**           | `http://<BASTION_IP>/info.php`       | Configuration PHP du serveur Web.     |
-| **phpMyAdmin**         | `http://<BASTION_IP>/pma/`           | Interface d'administration de la BDD. |
-
-> **Note** : Pour phpMyAdmin, utilisez les identifiants suivants :
-> *   **Utilisateur** : `admin`
-> *   **Mot de passe** : `IG2IUser`
-
----
-
-## 🧪 Vérification et Tests
-
-### Tests Automatisés
-Un script de test est fourni pour valider l'état de l'infrastructure :
-```bash
-./test.sh
+```mermaid
+flowchart LR
+    U(("🌍 Internet")) -->|HTTP :80| B["🛡️ Bastion<br/>Nginx (reverse proxy)"]
+    subgraph VPC["AWS · réseau privé"]
+        B -->|"/"| W["🌐 Serveur web<br/>Apache2 + PHP 8.4"]
+        B -->|"/pma/"| P["🗄️ phpMyAdmin<br/>(conteneur)"]
+        W -->|"MySQL :3306"| D[("MariaDB<br/>(conteneur)")]
+        P --- D
+    end
 ```
 
-### Tests Manuels
-Vous pouvez vérifier manuellement la connexion entre les serveurs :
+| Machine | Rôle Ansible | Ce qui est installé |
+|---|---|---|
+| 🛡️ Bastion | `bastion` | Nginx, qui redirige `/` vers le serveur web et `/pma/` vers phpMyAdmin |
+| 🌐 Serveur web | `webserver` | Apache2, PHP 8.4, page d'accueil, `info.php` et `dump.table.php` (test de lecture en base) |
+| 🗄️ Base de données | `database` | Docker, conteneurs MariaDB et phpMyAdmin sur un réseau dédié, import du jeu SQL |
 
-1.  **Connexion SSH au Web Server** :
-    ```bash
-    ssh -i ~/.ssh/vockey.pem admin@<WEBSERVER_IP>
-    ```
-2.  **Test de connexion MySQL distant** :
-    ```bash
-    mysql -h <DBSERVER_PRIVATE_IP> -u admin -p
-    # Mot de passe : IG2IUser
-    ```
+## ✨ Ce que le projet montre
 
----
+- **🧩 Rôles Ansible réutilisables**, chacun avec ses tâches, variables, templates Jinja2 et handlers.
+- **⚙️ Configuration paramétrée** : IP, version de PHP et utilisateurs passent par des variables, pas en dur dans les tâches.
+- **🛡️ Une seule porte d'entrée** : seul le bastion est exposé, les autres machines restent sur le réseau privé.
+- **🧪 Vérification automatique** : `test.sh` contrôle la clé SSH, la connectivité Ansible et la réponse des services.
+- **♻️ Remise à zéro** : `clean_and_redeploy.sh` nettoie puis redéploie tout.
 
-## 📂 Structure du Projet
+## 🚀 Démarrage rapide
+
+### Prérequis
+
+- **3 instances EC2** Debian 12 (t3.micro suffit), dans un même groupe de sécurité
+- La **clé SSH** des instances dans `~/.ssh/vockey.pem` (`chmod 600`)
+- **Ansible** sur votre machine
+- Les adresses IP des instances renseignées dans [`inventory`](inventory), et l'IP privée de la base dans
+  `roles/webserver/vars/main.yml` et `roles/bastion/vars/main.yml`
+
+### Déploiement
+
+```bash
+git clone https://github.com/DHoudetot-Cyril/Ansible2I.git
+cd Ansible2I
+chmod +x deploy.sh test.sh clean_and_redeploy.sh
+./deploy.sh      # vérifie la clé SSH et la connectivité, puis lance deploy-site.yml
+./test.sh        # vérifie que tout répond
+```
+
+| Service | URL |
+|---|---|
+| Site web | `http://<IP_BASTION>/` |
+| Test web ↔ base | `http://<IP_BASTION>/dump.table.php` |
+| Configuration PHP | `http://<IP_BASTION>/info.php` |
+| phpMyAdmin | `http://<IP_BASTION>/pma/` |
+
+> Les identifiants de la base sont définis dans `roles/database/vars/main.yml`. Ce sont des valeurs de TP,
+> à remplacer (idéalement avec **Ansible Vault**) avant toute utilisation réelle.
+
+## 📁 Structure du projet
 
 ```text
-roles_labs/advanced/
-├── inventory                     # Inventaire des serveurs (IPs, utilisateurs)
-├── deploy.sh                     # Script de lancement automatique
-├── deploy-site.yml               # Playbook Ansible principal
-├── roles/                        # Rôles Ansible modulaires
-│   ├── bastion/                  # Configuration Nginx
-│   ├── webserver/                # Configuration Apache + PHP
-│   └── database/                 # Configuration MariaDB + Docker
-└── README.md                     # Documentation du projet
+Ansible2I/
+├── inventory               # les 3 machines et leurs IP
+├── deploy-site.yml         # playbook principal
+├── deploy.sh               # vérifications + lancement du playbook
+├── test.sh                 # tests du déploiement
+├── clean_and_redeploy.sh   # remise à zéro
+└── roles/
+    ├── bastion/            # Nginx (reverse proxy)
+    ├── webserver/          # Apache + PHP
+    ├── database/           # Docker + MariaDB + phpMyAdmin
+    └── common/             # variables communes
 ```
 
----
+## 🩹 Dépannage
 
-## 🛠️ Dépannage
+| Problème | Piste |
+|---|---|
+| Erreur SSH | droits `600` sur la clé, et bon chemin dans `inventory` |
+| Le site n'atteint pas la base | vérifier l'IP privée de la base dans les `vars` du webserver et du bastion |
+| Un service ne répond pas | `ssh` sur la machine puis `systemctl status nginx` (ou `apache2`, `docker`) |
 
-*   **Erreur SSH** : Vérifiez que votre clé `vockey.pem` a bien les droits `600` et que le chemin est correct dans le fichier `inventory`.
-*   **Erreur de connexion DB** : Assurez-vous que l'IP privée du serveur de base de données est correctement configurée dans `roles/webserver/vars/main.yml` et `roles/bastion/vars/main.yml`.
-*   **Service indisponible** : Connectez-vous en SSH sur la machine concernée et vérifiez le statut du service (ex: `systemctl status nginx`).
+## 🗺️ Pistes d'amélioration
 
+- [ ] Créer les 3 instances avec **Terraform** au lieu de la console AWS
+- [ ] Chiffrer les secrets avec **Ansible Vault**
+- [ ] HTTPS sur le bastion (Let's Encrypt)
+- [ ] Lancer les tests des rôles avec **Molecule** dans une CI
 
+## 👤 Auteur
+
+**Cyril D'Houdetot** · [GitHub](https://github.com/DHoudetot-Cyril)
+
+<sub>Projet réalisé pendant mes études d'ingénieur à l'IG2I, sur un environnement AWS de TP.</sub>
