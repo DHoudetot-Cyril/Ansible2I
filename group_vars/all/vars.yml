@@ -8,3 +8,7 @@ mariadb_admin_user: "admin"
 
 mariadb_root_password: "{{ vault_mariadb_root_password }}"
 mariadb_admin_password: "{{ vault_mariadb_admin_password }}"
+
+# Accès à /pma/ sur le bastion (authentification HTTP, avant même la page de connexion de phpMyAdmin)
+pma_basic_auth_user: "{{ vault_pma_basic_auth_user }}"
+pma_basic_auth_password: "{{ vault_pma_basic_auth_password }}"

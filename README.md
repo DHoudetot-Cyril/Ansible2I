@@ -36,15 +36,16 @@ flowchart LR
 
 | Machine | Rôle Ansible | Ce qui est installé |
 |---|---|---|
-| 🛡️ Bastion | `bastion` | Nginx, qui redirige `/` vers le serveur web et `/pma/` vers phpMyAdmin |
+| 🛡️ Bastion | `bastion` | Nginx, qui redirige `/` vers le serveur web et `/pma/` (protégé par mot de passe) vers phpMyAdmin |
 | 🌐 Serveur web | `webserver` | Apache2, PHP 8.4, page d'accueil, `info.php` et `dump.table.php` (test de lecture en base) |
-| 🗄️ Base de données | `database` | Docker, conteneurs MariaDB et phpMyAdmin sur un réseau dédié, import du jeu SQL |
+| 🗄️ Base de données | `database` | Docker, conteneurs MariaDB et phpMyAdmin sur un réseau dédié, **à l'écoute sur l'IP privée uniquement**, import du jeu SQL |
 
 ## ✨ Ce que le projet montre
 
 - **🧩 Rôles Ansible réutilisables**, chacun avec ses tâches, variables, templates Jinja2 et handlers.
 - **⚙️ Configuration paramétrée** : IP, version de PHP et utilisateurs passent par des variables, pas en dur dans les tâches.
-- **🛡️ Une seule porte d'entrée** : seul le bastion est exposé, les autres machines restent sur le réseau privé.
+- **🛡️ Une seule porte d'entrée** : MariaDB et phpMyAdmin n'écoutent que sur l'IP privée ; tout passe par le bastion.
+- **🔒 phpMyAdmin protégé deux fois** : authentification HTTP sur le bastion, puis page de connexion de phpMyAdmin (aucune session ouverte automatiquement).
 - **🔐 Secrets chiffrés** avec Ansible Vault, partagés entre le serveur web et la base sans jamais apparaître en clair.
 - **🧪 Vérification automatique** : `test.sh` contrôle la clé SSH, la connectivité Ansible et la réponse des services.
 - **♻️ Remise à zéro** : `clean_and_redeploy.sh` nettoie puis redéploie tout.
@@ -80,7 +81,7 @@ ansible-vault encrypt group_vars/all/vault.yml
 | Site web | `http://<IP_BASTION>/` |
 | Test web ↔ base | `http://<IP_BASTION>/dump.table.php` |
 | Configuration PHP | `http://<IP_BASTION>/info.php` |
-| phpMyAdmin | `http://<IP_BASTION>/pma/` |
+| phpMyAdmin | `http://<IP_BASTION>/pma/` : identifiants du bastion, puis ceux de la base |
 
 > 🔐 Aucun mot de passe n'est écrit dans le dépôt. Ils sont dans `group_vars/all/vault.yml`, **chiffré avec
 > Ansible Vault** et ignoré par Git. `deploy.sh` refuse de se lancer si ce fichier manque ou n'est pas chiffré.

@@ -37,6 +37,8 @@ http {
         listen       80 default_server;
         listen       [::]:80 default_server;
         server_name  _;
+        # Redirections relatives : correctes quelle que soit l'adresse publique du bastion
+        absolute_redirect off;
 
         # Root location - serve web server
         location / {
@@ -48,24 +50,27 @@ http {
             proxy_redirect off;
         }
 
-        # phpMyAdmin location
-        location /phpmyadmin/ {
-            proxy_pass http://phpmyadmin_backend/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_redirect off;
-        }
+        # phpMyAdmin : une seule adresse, /pma/ (l'ancienne /phpmyadmin/ y redirige)
+        location = /phpmyadmin { return 301 /pma/; }
+        location /phpmyadmin/ { return 301 /pma/; }
 
-        # Alternative short URL for phpMyAdmin
         location /pma/ {
+            # 1re barrière : authentification HTTP sur le bastion (identifiants dans le vault)
+            auth_basic           "Administration";
+            auth_basic_user_file /etc/nginx/.htpasswd_pma;
+
             proxy_pass http://phpmyadmin_backend/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_redirect off;
+            # Le mot de passe du bastion n'a pas à être transmis à phpMyAdmin
+            proxy_set_header Authorization "";
+
+            # phpMyAdmin croit être servi à la racine : on garde ses redirections et cookies sous /pma/
+            proxy_redirect ~^https?://[^/]+/(.*)$ /pma/$1;
+            proxy_redirect / /pma/;
+            proxy_cookie_path / /pma/;
         }
     }
 }

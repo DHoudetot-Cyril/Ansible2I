@@ -1,3 +1,6 @@
 ---
 # Les variables de la base (nom, utilisateur, mots de passe) sont partagées avec le
 # serveur web : elles sont définies dans group_vars/all/ (mots de passe chiffrés avec Ansible Vault).
+
+# IP privée de la machine (réseau interne AWS) : MariaDB et phpMyAdmin n'écoutent que sur elle
+db_listen_ip: "{{ ansible_default_ipv4.address }}"

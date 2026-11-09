@@ -19,6 +19,24 @@
     state: directory
     mode: '0755'
 
+- name: Hash the phpMyAdmin access password (sel fixe pour rester idempotent)
+  command: openssl passwd -6 -salt "{{ (('pma-' ~ inventory_hostname) | hash('sha256'))[:16] }}" -stdin
+  args:
+    stdin: "{{ pma_basic_auth_password }}"
+  register: pma_htpasswd_hash
+  changed_when: false
+  no_log: true
+
+- name: Create the htpasswd file protecting /pma/
+  copy:
+    content: "{{ pma_basic_auth_user }}:{{ pma_htpasswd_hash.stdout }}\n"
+    dest: /etc/nginx/.htpasswd_pma
+    owner: root
+    group: www-data
+    mode: '0640'
+  no_log: true
+  notify: restart nginx
+
 - name: Configure Nginx
   template:
     src: nginx.conf.j2

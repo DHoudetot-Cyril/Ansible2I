@@ -9,3 +9,7 @@
 
 vault_mariadb_root_password: "A_REMPLACER"
 vault_mariadb_admin_password: "A_REMPLACER"
+
+# Identifiants demandés par le bastion avant d'accéder à /pma/
+vault_pma_basic_auth_user: "A_REMPLACER"
+vault_pma_basic_auth_password: "A_REMPLACER"
